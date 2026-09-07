@@ -1,0 +1,22 @@
+appId: com.memoapp.desktop
+productName: メモアプリ
+directories:
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+extraResources:
+  - from: resources
+    to: .
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icons/app_icon.png
+  signAndEditExecutable: false
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
