@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react'
 
 const HOLD_MS = 250
-const MOVE_THRESHOLD = 4
+const STILL_THRESHOLD = 6
 
 export interface DragApi {
   dragStart: (noteId: string, screenX: number, screenY: number) => void
@@ -9,15 +9,31 @@ export interface DragApi {
   dragEnd: (noteId: string) => void
 }
 
+export interface PressHoldDragOptions {
+  /**
+   * When true (default), dragging only arms once the hold timer fires AND the
+   * cursor stayed roughly in place until then — moving right away (a normal
+   * click-drag text selection) never triggers a window move. Needed wherever
+   * there's editable/selectable text under the pointer (TextNote, checklist
+   * rows). Set to false where there's nothing to select (e.g. the minimized
+   * chip) so any press-and-hold reliably becomes a drag even if the cursor
+   * drifts a little during the hold.
+   */
+  protectTextSelection?: boolean
+}
+
 type DragPhase = 'idle' | 'pending' | 'dragging'
 
 /**
- * Distinguishes a plain click (edit) from a press-and-hold drag (move the window),
- * per the spec: left-click = edit, left-click-and-hold = drag. Movement past a
- * small threshold also arms dragging immediately so fast intentional drags aren't
- * stuck waiting for the hold timer.
+ * Distinguishes a plain click from a press-and-hold drag (move the window),
+ * per the spec: left-click = edit, left-click-and-hold = drag.
  */
-export function usePressHoldDrag(noteId: string, api: DragApi): { onMouseDown: (e: React.MouseEvent) => void } {
+export function usePressHoldDrag(
+  noteId: string,
+  api: DragApi,
+  options: PressHoldDragOptions = {}
+): { onMouseDown: (e: React.MouseEvent) => void } {
+  const protectTextSelection = options.protectTextSelection ?? true
   const phase = useRef<DragPhase>('idle')
   const startScreen = useRef({ x: 0, y: 0 })
   const timer = useRef<number | null>(null)
@@ -41,17 +57,17 @@ export function usePressHoldDrag(noteId: string, api: DragApi): { onMouseDown: (
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (phase.current === 'idle') return
+      lastMove.current = { x: e.screenX, y: e.screenY }
       if (phase.current === 'pending') {
+        if (protectTextSelection) return
+        // No text to protect here: arm dragging as soon as the cursor moves,
+        // same as a hold — a fast intentional drag shouldn't wait for the timer.
         const dx = e.screenX - startScreen.current.x
         const dy = e.screenY - startScreen.current.y
-        if (Math.hypot(dx, dy) > MOVE_THRESHOLD) {
-          beginDragging()
-        } else {
-          return
-        }
+        if (Math.hypot(dx, dy) <= STILL_THRESHOLD) return
+        beginDragging()
       }
       e.preventDefault()
-      lastMove.current = { x: e.screenX, y: e.screenY }
       if (!rafPending.current) {
         rafPending.current = true
         requestAnimationFrame(() => {
@@ -60,7 +76,7 @@ export function usePressHoldDrag(noteId: string, api: DragApi): { onMouseDown: (
         })
       }
     },
-    [api, noteId, beginDragging]
+    [beginDragging, protectTextSelection, api, noteId]
   )
 
   const handleMouseUp = useCallback(() => {
@@ -89,14 +105,24 @@ export function usePressHoldDrag(noteId: string, api: DragApi): { onMouseDown: (
       if (e.button !== 0) return
       phase.current = 'pending'
       startScreen.current = { x: e.screenX, y: e.screenY }
+      lastMove.current = { x: e.screenX, y: e.screenY }
       clearTimer()
       timer.current = window.setTimeout(() => {
-        if (phase.current === 'pending') beginDragging()
+        if (phase.current !== 'pending') return
+        if (!protectTextSelection) {
+          beginDragging()
+          return
+        }
+        const dx = lastMove.current.x - startScreen.current.x
+        const dy = lastMove.current.y - startScreen.current.y
+        // Still roughly where the press started → a genuine hold, not a
+        // selection drag that happened to still be going after 250ms.
+        if (Math.hypot(dx, dy) <= STILL_THRESHOLD) beginDragging()
       }, HOLD_MS)
       window.addEventListener('mousemove', handleMouseMove)
       window.addEventListener('mouseup', handleMouseUp)
     },
-    [beginDragging, handleMouseMove, handleMouseUp]
+    [beginDragging, protectTextSelection, handleMouseMove, handleMouseUp]
   )
 
   return { onMouseDown }

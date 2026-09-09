@@ -2,7 +2,7 @@ import { app, globalShortcut, protocol } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { bootstrapFromStore } from './windowManager'
 import { registerIpcHandlers } from './ipcHandlers'
-import { createTray } from './trayManager'
+import { createTray, showFirstRunBalloon } from './trayManager'
 import { registerToggleShortcut } from './shortcutManager'
 import { registerIconProtocol } from './iconProtocol'
 import { openConsentWindow } from './consentWindow'
@@ -38,6 +38,7 @@ if (!gotLock) {
     // disclosure page (closing it without agreeing quits the app instead).
     if (!getSettings().hasAcceptedDisclosure) {
       await openConsentWindow('initial')
+      showFirstRunBalloon()
     }
 
     bootstrapFromStore()

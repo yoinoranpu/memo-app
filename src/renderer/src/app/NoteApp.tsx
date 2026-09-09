@@ -4,6 +4,7 @@ import { TextNote } from '../components/TextNote'
 import { ChecklistNote } from '../components/ChecklistNote'
 import { ResizeHandles } from '../components/ResizeHandles'
 import { MinimizedChip } from '../components/MinimizedChip'
+import { NoteHeader } from '../components/NoteHeader'
 
 function getNoteIdFromUrl(): string | null {
   return new URLSearchParams(window.location.search).get('noteId')
@@ -55,14 +56,7 @@ export function NoteApp(): React.JSX.Element | null {
   return (
     <div className="note-window">
       <div className="note-card" style={{ background: note.color }} onContextMenu={onContextMenu}>
-        <button
-          className="minimize-button"
-          title="最小化(クリックで元に戻す)"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => window.noteApi.minimizeToggle(note.id)}
-        >
-          −
-        </button>
+        <NoteHeader noteId={note.id} />
         {note.type === 'text' ? <TextNote note={note} /> : <ChecklistNote note={note} />}
       </div>
       <ResizeHandles noteId={note.id} />

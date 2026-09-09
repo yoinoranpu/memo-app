@@ -7,14 +7,19 @@ interface Props {
   onContextMenu: (e: React.MouseEvent) => void
 }
 
+// Deliberately NOT icon_new_text/icon_new_checklist — those carry a "+" that
+// reads as "create new", which is the wrong message for "this is a minimized
+// note of this type". These are separate, dedicated type-indicator icons
+// (see resources/icons/README.md for the generation prompt); until they're
+// supplied, onError below falls back to shape + color only.
 const TYPE_ICON: Record<Note['type'], string> = {
-  text: 'icon_new_text',
-  checklist: 'icon_new_checklist'
+  text: 'icon_type_text',
+  checklist: 'icon_type_checklist'
 }
 
 export function MinimizedChip({ note, onContextMenu }: Props): React.JSX.Element {
   const [iconOk, setIconOk] = useState(true)
-  const { onMouseDown } = usePressHoldDrag(note.id, window.noteApi)
+  const { onMouseDown } = usePressHoldDrag(note.id, window.noteApi, { protectTextSelection: false })
 
   return (
     <div

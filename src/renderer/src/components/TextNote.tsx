@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import type { Note } from '@shared/types'
-import { usePressHoldDrag } from '../hooks/usePressHoldDrag'
 import { useDebouncedCallback } from '../hooks/useDebouncedCallback'
 
 interface Props {
@@ -9,7 +8,6 @@ interface Props {
 
 export function TextNote({ note }: Props): React.JSX.Element {
   const [content, setContent] = useState(note.content ?? '')
-  const { onMouseDown } = usePressHoldDrag(note.id, window.noteApi)
   const debouncedSave = useDebouncedCallback((value: string) => {
     window.noteApi.updateContent(note.id, value)
   }, 400)
@@ -23,7 +21,6 @@ export function TextNote({ note }: Props): React.JSX.Element {
       className="note-textarea"
       style={{ fontSize: note.fontSize }}
       value={content}
-      onMouseDown={onMouseDown}
       onChange={(e) => {
         setContent(e.target.value)
         debouncedSave(e.target.value)

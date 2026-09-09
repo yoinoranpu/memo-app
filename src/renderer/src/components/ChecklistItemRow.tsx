@@ -14,7 +14,7 @@ export function ChecklistItemRow({ item, fontSize, inputRef, onTextChange, onTog
   const [iconOk, setIconOk] = useState(true)
 
   return (
-    <div className={`checklist-row${item.checked ? ' checked' : ''}`} onMouseDown={(e) => e.stopPropagation()}>
+    <div className={`checklist-row${item.checked ? ' checked' : ''}`}>
       {iconOk ? (
         <img
           className="checklist-checkbox"

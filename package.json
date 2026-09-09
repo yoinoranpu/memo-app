@@ -1,6 +1,6 @@
 {
   "name": "memo-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "画面の一番上に常駐する、クリックするだけで書ける・チェックできるメモ",
   "main": "./out/main/index.js",
   "author": "",

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChecklistItem, Note } from '@shared/types'
-import { usePressHoldDrag } from '../hooks/usePressHoldDrag'
 import { useDebouncedCallback } from '../hooks/useDebouncedCallback'
 import { normalizeChecklist } from '../utils/checklistNormalize'
 import { ChecklistItemRow } from './ChecklistItemRow'
@@ -11,7 +10,6 @@ interface Props {
 
 export function ChecklistNote({ note }: Props): React.JSX.Element {
   const [items, setItems] = useState<ChecklistItem[]>(() => normalizeChecklist(note.items ?? []))
-  const { onMouseDown } = usePressHoldDrag(note.id, window.noteApi)
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const debouncedSave = useDebouncedCallback((value: ChecklistItem[]) => {
     window.noteApi.updateChecklist(note.id, value)
@@ -34,7 +32,7 @@ export function ChecklistNote({ note }: Props): React.JSX.Element {
   }
 
   return (
-    <div className="checklist-body" onMouseDown={onMouseDown}>
+    <div className="checklist-body">
       {items.map((item) => (
         <ChecklistItemRow
           key={item.id}

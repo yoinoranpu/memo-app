@@ -11,12 +11,13 @@ import {
   updateNote as updateNoteInStore
 } from './dataStore'
 import { findCascadePosition, type Rect } from './cascade'
+import { minimizeAnchor, restoreAnchor, clampRectToWorkArea } from './minimizeAnchor'
 import { showUndoToast, closeUndoToast } from './toastWindow'
 import { IPC, type ResizeEdge } from '../shared/ipc'
 import { MIN_SIZE, type Note } from '../shared/types'
 
 const MOVE_PERSIST_DEBOUNCE_MS = 300
-const MINIMIZED_SIZE = { width: 36, height: 36 }
+const MINIMIZED_SIZE = { width: 48, height: 48 }
 
 interface DragState {
   startCursorX: number
@@ -27,10 +28,17 @@ interface DragState {
   height: number
 }
 
+interface PendingWrite {
+  position: { x: number; y: number; monitorId: string }
+  size?: { width: number; height: number }
+}
+
 interface TrackedWindow {
   win: BrowserWindow
-  restoreSize: { width: number; height: number } | null
   moveTimer: NodeJS.Timeout | null
+  suppressPersist: boolean
+  pendingWrite: PendingWrite | null
+  flushPendingWrite: () => void
 }
 
 interface ResizeState {
@@ -99,29 +107,56 @@ function createNoteWindow(note: Note): BrowserWindow {
     if (notesVisible) win.show()
   })
 
-  const tracked: TrackedWindow = { win, restoreSize: null, moveTimer: null }
+  const tracked: TrackedWindow = {
+    win,
+    moveTimer: null,
+    suppressPersist: false,
+    pendingWrite: null,
+    flushPendingWrite: () => {
+      if (tracked.moveTimer) {
+        clearTimeout(tracked.moveTimer)
+        tracked.moveTimer = null
+      }
+      if (!tracked.pendingWrite) return
+      const payload = tracked.pendingWrite
+      tracked.pendingWrite = null
+      updateNoteInStore(note.id, payload)
+    }
+  }
   windows.set(note.id, tracked)
 
   const persistBounds = (): void => {
-    if (tracked.moveTimer) clearTimeout(tracked.moveTimer)
-    tracked.moveTimer = setTimeout(() => {
-      if (win.isDestroyed()) return
-      const [x, y] = win.getPosition()
-      const existing = getAllNotes().find((n) => n.id === note.id)
-      if (!existing) return
-      // Position is always persisted (a minimized chip can still be dragged
-      // around), but size is only persisted when not minimized — the 36x36
-      // minimized chip size must never overwrite the note's real size.
-      if (existing.minimized) {
-        updateNoteInStore(note.id, { position: { x, y, monitorId: monitorIdAt(x, y) } })
-        return
-      }
+    // minimizeToggle already writes the authoritative position/size to the
+    // store itself, synchronously, in the same call that resizes the window —
+    // it sets suppressPersist around that call so this generic move/resize
+    // listener (meant for user-driven dragging/resizing) never also fires for
+    // it. Without this, a quick peek-then-reminimize could still race: this
+    // listener would schedule its own debounced write right as minimizeToggle
+    // was mid-transition, occasionally saving a stale mix of the two.
+    if (tracked.suppressPersist) return
+    // Snapshot everything synchronously, right when the move/resize event
+    // actually fires, and keep it in tracked.pendingWrite immediately — only
+    // the store WRITE itself is debounced (see flushPendingWrite). This way,
+    // if minimizeToggle runs before the debounce fires, it can flush this
+    // pending value on the spot instead of discarding it and falling back to
+    // a stale stored position (e.g. dragging a note, then immediately
+    // minimizing it within the 300ms debounce window).
+    const [x, y] = win.getPosition()
+    const existing = getAllNotes().find((n) => n.id === note.id)
+    if (!existing) return
+    const position = { x, y, monitorId: monitorIdAt(x, y) }
+    // Position is always persisted (a minimized chip can still be dragged
+    // around), but size is only persisted when not minimized — the tiny
+    // minimized chip size must never overwrite the note's real size.
+    if (existing.minimized) {
+      tracked.pendingWrite = { position }
+    } else {
       const [width, height] = win.getSize()
-      updateNoteInStore(note.id, {
-        position: { x, y, monitorId: monitorIdAt(x, y) },
-        size: { width, height }
-      })
-    }, MOVE_PERSIST_DEBOUNCE_MS)
+      tracked.pendingWrite = { position, size: { width, height } }
+    }
+
+    if (tracked.moveTimer) clearTimeout(tracked.moveTimer)
+    tracked.moveTimer = setTimeout(tracked.flushPendingWrite, MOVE_PERSIST_DEBOUNCE_MS)
   }
 
   win.on('move', persistBounds)
@@ -226,45 +261,69 @@ export function sendToBack(noteId: string): void {
 // growing a note back up from its minimized chip never pushes it off-screen.
 function clampToWorkArea(x: number, y: number, width: number, height: number): { x: number; y: number } {
   const display = screen.getDisplayNearestPoint({ x: x + width / 2, y: y + height / 2 })
-  const wa = display.workArea
-  const maxX = wa.x + Math.max(0, wa.width - width)
-  const maxY = wa.y + Math.max(0, wa.height - height)
-  return {
-    x: Math.min(Math.max(x, wa.x), maxX),
-    y: Math.min(Math.max(y, wa.y), maxY)
-  }
+  return clampRectToWorkArea({ x, y, width, height }, display.workArea)
 }
 
 export function minimizeToggle(noteId: string): void {
   const tracked = windows.get(noteId)
   if (!tracked) return
+  // Apply any debounced drag/resize write immediately rather than discarding
+  // it — e.g. dragging a note and then minimizing it right away, within the
+  // 300ms debounce window, must not fall back to the position from before
+  // that drag.
+  tracked.flushPendingWrite()
   const note = getAllNotes().find((n) => n.id === noteId)
   if (!note) return
-  const bounds = tracked.win.getBounds()
+  // Position/size are driven from the store (the app's own record of "where
+  // this note is"), never re-read from win.getBounds() here. Windows doesn't
+  // always finish applying a setBounds() synchronously — re-querying the
+  // live rect right after a previous toggle can catch it mid-update, which
+  // was the real source of the drift on quick minimize/restore cycles even
+  // after the race-condition fix. Trusting our own last-written value instead
+  // makes each toggle fully independent of what the OS reports back.
   if (!note.minimized) {
-    tracked.restoreSize = { ...note.size }
     tracked.win.setResizable(false)
     // The window's minimum size constraint (MIN_SIZE, ~150x100) otherwise
     // silently clamps setSize below it, so it has to be relaxed first.
     tracked.win.setMinimumSize(MINIMIZED_SIZE.width, MINIMIZED_SIZE.height)
-    // Top-left stays fixed (only width/height shrink). Anchoring to a corner
-    // that then gets clamped on restore (e.g. top-right) causes the position
-    // to drift a little further on every minimize/restore cycle once the
-    // note is near a screen edge — keeping the anchor fixed at top-left for
-    // both directions means a plain cycle never moves the note at all.
-    tracked.win.setBounds({ x: bounds.x, y: bounds.y, width: MINIMIZED_SIZE.width, height: MINIMIZED_SIZE.height })
-    const updated = updateNoteInStore(noteId, { minimized: true })
+    // Anchor to the top-right corner (where the minimize button sits), so
+    // the note visually collapses into the button. Safe from the earlier
+    // drift bug now: that was caused by the restore-time edge clamp being
+    // written back as the note's real position (see below), not by which
+    // corner is used as the anchor.
+    const { x, y } = minimizeAnchor(note.position, note.size, MINIMIZED_SIZE)
+    tracked.suppressPersist = true
+    tracked.win.setBounds({ x, y, width: MINIMIZED_SIZE.width, height: MINIMIZED_SIZE.height })
+    setImmediate(() => {
+      tracked.suppressPersist = false
+    })
+    const updated = updateNoteInStore(noteId, {
+      minimized: true,
+      position: { x, y, monitorId: monitorIdAt(x, y) }
+    })
     if (updated) pushNoteUpdate(updated)
   } else {
-    const restore = tracked.restoreSize ?? note.size
+    const restore = note.size
     tracked.win.setMinimumSize(MIN_SIZE.width, MIN_SIZE.height)
-    const clamped = clampToWorkArea(bounds.x, bounds.y, restore.width, restore.height)
+    const grown = restoreAnchor(note.position, restore, MINIMIZED_SIZE)
+    const clamped = clampToWorkArea(grown.x, grown.y, restore.width, restore.height)
+    tracked.suppressPersist = true
     tracked.win.setBounds({ x: clamped.x, y: clamped.y, width: restore.width, height: restore.height })
+    setImmediate(() => {
+      tracked.suppressPersist = false
+    })
     tracked.win.setResizable(true)
+    // Persist `grown` (the exact inverse of the minimize anchor math) — NOT
+    // `clamped`. Leaving the store untouched entirely was itself a bug: the
+    // next minimize would then anchor off the *previous* chip position
+    // instead of the note's actual current position, compounding the
+    // top-right offset further right on every cycle. Persisting `clamped`
+    // instead would have the earlier bug back (an edge-triggered nudge
+    // becoming permanent). `grown` is the one value that's both correct now
+    // and exactly reversible on the next minimize.
     const updated = updateNoteInStore(noteId, {
       minimized: false,
-      size: restore,
-      position: { x: clamped.x, y: clamped.y, monitorId: monitorIdAt(clamped.x, clamped.y) }
+      position: { x: grown.x, y: grown.y, monitorId: monitorIdAt(grown.x, grown.y) }
     })
     if (updated) pushNoteUpdate(updated)
   }
