@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>メモアプリ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Yomogi&family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap"
+  rel="stylesheet"
+/>
+<style>
+  :root {
+    --paper: #f4eedf;
+    --paper-deep: #eadfc4;
+    --paper-line: rgba(42, 37, 32, 0.08);
+    --ink: #2a2520;
+    --ink-soft: #7a715e;
+    --pen: #2e5a82;
+    --pen-deep: #1f415f;
+    --pen-tint: #e4eef4;
+    --note-yellow: #ffeba6;
+    --note-yellow-edge: #e9cd6c;
+    --note-blue: #cfe7f6;
+    --note-blue-edge: #a8d2ea;
+    --note-pink: #fad6e0;
+    --note-pink-edge: #eeb4c6;
+    --note-green: #dcf0d6;
+    --note-green-edge: #b7dcab;
+    --shadow: rgba(42, 32, 20, 0.22);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
+    line-height: 1.8;
+    background-image: radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.35), transparent 40%),
+      radial-gradient(circle at 85% 30%, rgba(255, 255, 255, 0.25), transparent 45%),
+      repeating-linear-gradient(0deg, rgba(42, 37, 32, 0.02) 0px, rgba(42, 37, 32, 0.02) 1px, transparent 1px, transparent 3px);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: 'Yomogi', 'Zen Maru Gothic', sans-serif;
+    font-weight: 400;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  a {
+    color: var(--pen);
+  }
+
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ---------- hero ---------- */
+
+  .hero {
+    padding: 72px 24px 40px;
+    text-align: center;
+  }
+
+  .pin {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ff8f8f, #c23b3b 70%);
+    margin: 0 auto 18px;
+    box-shadow: 0 3px 6px var(--shadow);
+  }
+
+  .wordmark {
+    font-size: clamp(48px, 9vw, 84px);
+    color: var(--ink);
+    transform: rotate(-2deg);
+    display: inline-block;
+  }
+
+  .tagline {
+    margin: 18px auto 0;
+    max-width: 30em;
+    font-size: 19px;
+    color: var(--ink-soft);
+  }
+
+  .badges {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 26px;
+  }
+
+  .badge {
+    font-size: 13px;
+    color: var(--ink-soft);
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid var(--paper-line);
+    border-radius: 999px;
+    padding: 6px 14px;
+  }
+
+  .cta-row {
+    margin-top: 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--pen);
+    color: #fdfaf2;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-weight: 700;
+    font-size: 19px;
+    text-decoration: none;
+    padding: 18px 36px;
+    border-radius: 14px;
+    box-shadow: 0 10px 0 var(--pen-deep), 0 16px 24px var(--shadow);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+
+  .cta:hover {
+    transform: translateY(2px);
+    box-shadow: 0 8px 0 var(--pen-deep), 0 12px 18px var(--shadow);
+  }
+
+  .cta:active {
+    transform: translateY(8px);
+    box-shadow: 0 2px 0 var(--pen-deep), 0 4px 8px var(--shadow);
+  }
+
+  .cta svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .cta-meta {
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  .cta-meta a {
+    color: var(--ink-soft);
+    text-decoration: underline;
+  }
+
+  /* ---------- mock desk / preview ---------- */
+
+  .desk {
+    position: relative;
+    max-width: 640px;
+    margin: 56px auto 0;
+    height: 300px;
+  }
+
+  .mock-note {
+    position: absolute;
+    width: 220px;
+    height: 160px;
+    border-radius: 10px;
+    box-shadow: 0 10px 22px var(--shadow);
+    padding: 14px 16px;
+  }
+
+  .mock-note .line {
+    height: 9px;
+    border-radius: 5px;
+    background: rgba(42, 37, 32, 0.16);
+    margin-bottom: 10px;
+  }
+
+  .mock-note.yellow {
+    background: var(--note-yellow);
+    border-bottom: 4px solid var(--note-yellow-edge);
+    left: 4%;
+    top: 18px;
+    transform: rotate(-6deg);
+  }
+
+  .mock-note.blue {
+    background: var(--note-blue);
+    border-bottom: 4px solid var(--note-blue-edge);
+    right: 6%;
+    top: 0;
+    transform: rotate(4deg);
+    z-index: 2;
+  }
+
+  .mock-note.pink {
+    background: var(--note-pink);
+    border-bottom: 4px solid var(--note-pink-edge);
+    left: 32%;
+    top: 92px;
+    transform: rotate(2deg);
+    z-index: 3;
+  }
+
+  .mock-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .mock-box {
+    width: 13px;
+    height: 13px;
+    border-radius: 4px;
+    border: 2px solid rgba(42, 37, 32, 0.35);
+    flex: none;
+  }
+
+  .mock-box.done {
+    background: rgba(42, 37, 32, 0.35);
+  }
+
+  .mock-check .line {
+    margin: 0;
+  }
+
+  .mock-check.done .line {
+    background: rgba(42, 37, 32, 0.22);
+    text-decoration: line-through;
+  }
+
+  /* ---------- sections ---------- */
+
+  section {
+    padding: 52px 0;
+  }
+
+  .eyebrow {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: var(--pen);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .section-head {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .section-head h2 {
+    font-size: 34px;
+    margin-top: 8px;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+
+  .step {
+    border-radius: 12px;
+    padding: 24px 20px 26px;
+    box-shadow: 0 8px 18px var(--shadow);
+    position: relative;
+  }
+
+  .step:nth-child(1) {
+    background: var(--note-yellow);
+    border-bottom: 5px solid var(--note-yellow-edge);
+    transform: rotate(-1.5deg);
+  }
+
+  .step:nth-child(2) {
+    background: var(--note-blue);
+    border-bottom: 5px solid var(--note-blue-edge);
+    transform: rotate(1deg);
+  }
+
+  .step:nth-child(3) {
+    background: var(--note-pink);
+    border-bottom: 5px solid var(--note-pink-edge);
+    transform: rotate(-0.8deg);
+  }
+
+  .step-num {
+    font-family: 'Yomogi', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .step h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
+  .step p {
+    margin: 0;
+    font-size: 14.5px;
+    color: var(--ink);
+    opacity: 0.82;
+  }
+
+  .step .note {
+    display: block;
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: var(--pen-deep);
+    background: rgba(255, 255, 255, 0.55);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+
+  /* features */
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+
+  .feature {
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid var(--paper-line);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .feature .glyph {
+    font-family: 'Yomogi', sans-serif;
+    font-size: 26px;
+    color: var(--pen);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .feature h3 {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+
+  .feature p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+
+  /* trust */
+
+  .trust {
+    background: var(--pen-tint);
+    border-radius: 18px;
+    padding: 32px;
+  }
+
+  .trust-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px 28px;
+  }
+
+  .trust-item {
+    display: flex;
+    gap: 12px;
+  }
+
+  .trust-item .mark {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--pen);
+    color: #fdfaf2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .trust-item p {
+    margin: 0;
+    font-size: 14.5px;
+  }
+
+  .trust-item strong {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 2px;
+  }
+
+  /* footer */
+
+  footer {
+    padding: 40px 24px 60px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+  }
+
+  footer a {
+    color: var(--ink-soft);
+  }
+
+  footer .divider {
+    width: 60px;
+    height: 2px;
+    background: var(--paper-line);
+    margin: 0 auto 24px;
+    border-radius: 2px;
+  }
+
+  @media (max-width: 640px) {
+    .steps,
+    .features,
+    .trust-grid {
+      grid-template-columns: 1fr;
+    }
+    .desk {
+      height: 420px;
+    }
+    .mock-note.yellow {
+      left: 8%;
+      top: 0;
+    }
+    .mock-note.pink {
+      left: 14%;
+      top: 130px;
+    }
+    .mock-note.blue {
+      right: 8%;
+      top: 260px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="pin"></div>
+  <h1 class="wordmark">メモアプリ</h1>
+  <p class="tagline">画面の一番上に、ふせんを置いておくアプリ。<br />クリックするだけで書ける、チェックできる。</p>
+
+  <div class="badges">
+    <span class="badge">無料</span>
+    <span class="badge">会員登録不要</span>
+    <span class="badge">ネット通信なし</span>
+    <span class="badge">Windows用</span>
+  </div>
+
+  <div class="cta-row">
+    <a class="cta" href="https://github.com/yoinoranpu/memo-app/releases/download/v0.3.1/Setup.0.3.1.exe">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3v13" />
+        <path d="M6 11l6 6 6-6" />
+        <path d="M5 21h14" />
+      </svg>
+      ダウンロード (Windows)
+    </a>
+    <span class="cta-meta">v0.3.1・約84MB・<a href="https://github.com/yoinoranpu/memo-app">ソースコードを見る</a></span>
+  </div>
+
+  <div class="desk" aria-hidden="true">
+    <div class="mock-note yellow">
+      <div class="line" style="width: 80%"></div>
+      <div class="line" style="width: 60%"></div>
+      <div class="line" style="width: 70%"></div>
+      <div class="line" style="width: 40%"></div>
+    </div>
+    <div class="mock-note pink">
+      <div class="mock-check">
+        <span class="mock-box"></span>
+        <span class="line" style="width: 100px">牛乳を買う</span>
+      </div>
+      <div class="mock-check done">
+        <span class="mock-box done"></span>
+        <span class="line" style="width: 80px">部屋の片付け</span>
+      </div>
+      <div class="mock-check">
+        <span class="mock-box"></span>
+        <span class="line" style="width: 60px">宿題</span>
+      </div>
+    </div>
+    <div class="mock-note blue">
+      <div class="line" style="width: 90%"></div>
+      <div class="line" style="width: 50%"></div>
+      <div class="line" style="width: 65%"></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">はじめかた</span>
+      <h2>3ステップで使える</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">1</span>
+        <h3>ダウンロード</h3>
+        <p>上のボタンを押すと、インストーラー(.exe)が保存されます。</p>
+        <span class="note">ダウンロード時に「一般的にダウンロードされていません」と出ますが、心配ありません。「保持」を選んでください。</span>
+      </div>
+      <div class="step">
+        <span class="step-num">2</span>
+        <h3>開いて進める</h3>
+        <p>保存した.exeをダブルクリック。案内にそって「次へ」で進めます。</p>
+        <span class="note">「Windowsによって PC が保護されました」と出たら「詳細情報」→「実行」。未署名の新しいアプリだと必ず出る、想定内の表示です。</span>
+      </div>
+      <div class="step">
+        <span class="step-num">3</span>
+        <h3>右下のアイコンから</h3>
+        <p>画面右下・時計の近くにアイコンが常駐します。右クリックでメモを作成。</p>
+        <span class="note">見当たらない時は「^」(隠れているインジケーター)をクリック。</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">できること</span>
+      <h2>付箋そのものの使い心地</h2>
+    </div>
+    <div class="features">
+      <div class="feature">
+        <span class="glyph">✎</span>
+        <h3>2種類のメモ</h3>
+        <p>自由に書けるテキストメモと、チェックできるリストメモ。用途に合わせて使い分け。</p>
+      </div>
+      <div class="feature">
+        <span class="glyph">⇱</span>
+        <h3>常に一番上に</h3>
+        <p>他の作業をしていても、メモは画面の最前面に居続けます。</p>
+      </div>
+      <div class="feature">
+        <span class="glyph">◐</span>
+        <h3>隠す・小さくする</h3>
+        <p>人に見られたくない時は中身ごと隠せて、邪魔な時はワンクリックで最小化。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="trust">
+      <div class="section-head" style="margin-bottom: 24px">
+        <span class="eyebrow">安心して使えるように</span>
+        <h2 style="font-size: 26px">個人情報は一切扱いません</h2>
+      </div>
+      <div class="trust-grid">
+        <div class="trust-item">
+          <span class="mark">✓</span>
+          <p><strong>通信しません</strong>インターネットへの接続を一切行いません。</p>
+        </div>
+        <div class="trust-item">
+          <span class="mark">✓</span>
+          <p><strong>データは自分のPCの中だけ</strong>書いた内容はパソコン内にのみ保存され、外部へは送られません。</p>
+        </div>
+        <div class="trust-item">
+          <span class="mark">✓</span>
+          <p><strong>自動起動は初期状態でOFF</strong>設定画面で自分がONにしない限り、PC起動時には立ち上がりません。</p>
+        </div>
+        <div class="trust-item">
+          <span class="mark">✓</span>
+          <p><strong>ソースコード公開</strong>中身は<a href="https://github.com/yoinoranpu/memo-app">GitHub</a>で誰でも確認できます。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="divider"></div>
+  <p>メモアプリ v0.3.1 ・ MIT License ・ 個人開発</p>
+  <p><a href="https://github.com/yoinoranpu/memo-app">GitHubリポジトリ</a></p>
+</footer>
+
+</body>
+</html>
