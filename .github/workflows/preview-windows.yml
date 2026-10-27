@@ -21,7 +21,7 @@ jobs:
       - name: Build preview installer
         shell: pwsh
         run: |
-          cmd /c "npm run dist > windows-build.log 2>&1"
+          cmd /c "npm run dist -- --publish never > windows-build.log 2>&1"
           $previewBuildExit = $LASTEXITCODE
           Get-Content windows-build.log | Write-Output
           if ($previewBuildExit -ne 0) {
