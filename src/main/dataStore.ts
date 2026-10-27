@@ -110,3 +110,7 @@ export function createNoteDefaults(
     updatedAt: new Date().toISOString()
   }
 }
+
+export function appendNotes(notes: Note[]): void {
+  store().set('notes', [...getAllNotes(), ...notes])
+}

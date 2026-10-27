@@ -1,7 +1,9 @@
+import type { BackupNote } from './backupFormat'
 import { BrowserWindow, screen } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { join } from 'path'
 import {
+  appendNotes,
   createNoteDefaults,
   deleteNote as deleteNoteFromStore,
   getAllNotes,
@@ -162,6 +164,7 @@ function createNoteWindow(note: Note): BrowserWindow {
   win.on('move', persistBounds)
   win.on('resize', persistBounds)
 
+  win.on('close', tracked.flushPendingWrite)
   win.on('closed', () => {
     windows.delete(note.id)
     dragState.delete(note.id)
@@ -427,4 +430,19 @@ export function areNotesVisible(): boolean {
 
 export function allNoteWindows(): BrowserWindow[] {
   return Array.from(windows.values()).map((t) => t.win)
+}
+
+export function importBackupNotes(entries: BackupNote[]): void {
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  const rects = existingRectsOnMonitor(`display-${display.id}`)
+  const baseZ = getAllNotes().reduce((max, note) => Math.max(max, note.zIndex), 0)
+  const notes = entries.map((entry, index) => {
+    const size = { width: 220, height: 160 }
+    const position = findCascadePosition(display.workArea, size, rects, null)
+    rects.push({ ...position, ...size })
+    return { ...createNoteDefaults(crypto.randomUUID(), entry.type, position.x, position.y), ...entry, zIndex: baseZ + index + 1 }
+  })
+  // One store write: validation and construction finish before any existing data changes.
+  appendNotes(notes)
+  for (const note of notes) createNoteWindow(note)
 }

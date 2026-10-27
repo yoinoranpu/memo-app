@@ -17,6 +17,7 @@ function acceleratorFromEvent(e: KeyboardEvent): string | null {
 
 export function SettingsApp(): React.JSX.Element {
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [backupBusy, setBackupBusy] = useState(false)
   const [recording, setRecording] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -43,6 +44,15 @@ export function SettingsApp(): React.JSX.Element {
       setMessage(result.ok ? '保存しました' : result.error ?? '保存に失敗しました')
       setTimeout(() => setMessage(null), 3000)
     })
+  }
+
+  const backup = async (mode: 'export' | 'import'): Promise<void> => {
+    setBackupBusy(true)
+    try {
+      const result = await (mode === 'export' ? window.settingsApi.exportBackup() : window.settingsApi.importBackup())
+      setMessage(result.message)
+    } catch { setMessage('バックアップ操作に失敗しました。もう一度お試しください。') }
+    finally { setBackupBusy(false) }
   }
 
   if (!settings) return <div style={{ padding: 16 }}>読み込み中...</div>
@@ -78,7 +88,13 @@ export function SettingsApp(): React.JSX.Element {
         </button>
       </div>
 
-      {message && <div style={{ color: '#555' }}>{message}</div>}
+      <div style={{ marginBottom: 20 }}>
+        <h3 style={{ fontSize: 13 }}>メモのバックアップ</h3>
+        <button disabled={backupBusy} onClick={() => backup('export')}>書き出し</button>{' '}
+        <button disabled={backupBusy} onClick={() => backup('import')}>読み込み</button>
+        <p>読み込みは今あるメモを残して追加します。バックアップにはメモの内容が暗号化されずに保存されます。</p>
+      </div>
+      {message && <div role="status" style={{ color: '#555' }}>{message}</div>}
     </div>
   )
 }

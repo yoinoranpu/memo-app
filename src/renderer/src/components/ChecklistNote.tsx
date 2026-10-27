@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChecklistItem, Note } from '@shared/types'
-import { useDebouncedCallback } from '../hooks/useDebouncedCallback'
 import { normalizeChecklist } from '../utils/checklistNormalize'
 import { ChecklistItemRow } from './ChecklistItemRow'
 
@@ -11,9 +10,6 @@ interface Props {
 export function ChecklistNote({ note }: Props): React.JSX.Element {
   const [items, setItems] = useState<ChecklistItem[]>(() => normalizeChecklist(note.items ?? []))
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
-  const debouncedSave = useDebouncedCallback((value: ChecklistItem[]) => {
-    window.noteApi.updateChecklist(note.id, value)
-  }, 400)
 
   useEffect(() => {
     setItems(normalizeChecklist(note.items ?? []))
@@ -22,7 +18,7 @@ export function ChecklistNote({ note }: Props): React.JSX.Element {
   const applyChange = (updated: ChecklistItem[]): void => {
     const next = normalizeChecklist(updated)
     setItems(next)
-    debouncedSave(next)
+    window.noteApi.updateChecklist(note.id, next)
   }
 
   const focusNext = (currentId: string): void => {

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import type { ChecklistItem, Note, Settings } from '@shared/types'
-import type { ResizeEdge } from '@shared/ipc'
+import type { BackupResult, ResizeEdge } from '@shared/ipc'
 
 export interface NoteApi {
   getInitial: (noteId: string) => Promise<Note | undefined>
@@ -19,6 +19,8 @@ export interface NoteApi {
 }
 
 export interface SettingsApi {
+  exportBackup: () => Promise<BackupResult>
+  importBackup: () => Promise<BackupResult>
   get: () => Promise<Settings>
   update: (patch: Partial<Settings>) => Promise<{ ok: boolean; settings: Settings; error?: string }>
   openDisclosure: () => void

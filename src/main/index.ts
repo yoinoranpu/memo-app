@@ -7,6 +7,7 @@ import { registerToggleShortcut } from './shortcutManager'
 import { registerIconProtocol } from './iconProtocol'
 import { openConsentWindow } from './consentWindow'
 import { getSettings } from './dataStore'
+import { registerBackupHandlers } from './backup'
 
 app.setName('メモアプリ')
 
@@ -32,6 +33,7 @@ if (!gotLock) {
 
     registerIconProtocol()
     registerIpcHandlers()
+    registerBackupHandlers()
     createTray()
 
     // First launch: block note/shortcut startup on the user accepting the

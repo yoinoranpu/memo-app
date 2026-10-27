@@ -13,6 +13,8 @@ export const IPC = {
   WINDOW_RESIZE_START: 'window:resizeStart',
   WINDOW_RESIZE_MOVE: 'window:resizeMove',
   WINDOW_RESIZE_END: 'window:resizeEnd',
+  BACKUP_EXPORT: 'backup:export',
+  BACKUP_IMPORT: 'backup:import',
   SETTINGS_GET: 'settings:get',
   SETTINGS_UPDATE: 'settings:update',
   SETTINGS_OPEN_DISCLOSURE: 'settings:openDisclosure',
@@ -58,4 +60,9 @@ export interface SettingsUpdateResult {
 
 export interface ToastUndoPayload {
   deletedNoteId: string
+}
+
+export interface BackupResult {
+  ok: boolean
+  message: string
 }
